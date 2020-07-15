@@ -1,35 +1,28 @@
+import logging
+import os
+
 # noinspection PyUnresolvedReferences
 from distutils.spawn import find_executable
 
-
-def format_msg(msg, color=None):
-    """ Wrap msg in bash escape characters
-
-    :param str msg: Message
-    :param color: red, orange, error or warn
-    :return: Escaped message
-    """
-    if color in ('red', 'error'):
-        esc_char = '41'
-    elif color in ('orange', 'warn'):
-        esc_char = '43'
-    else:
-        esc_char = '42'
-
-    return '\033[%sm%s\033[0m' % (esc_char, msg)
+from ccbr_server.common import Report, format_msg
 
 
-class RaidCliException(Exception):
+log = logging.getLogger(__file__)
+
+
+class RaidReportException(Exception):
     pass
 
 
-class RaidCli:
+class RaidReport(Report):
     """ Standardized interface to all RAID cli's
     :type executables: list[str]
     :type adapters: list[Adapter]
-    :type phy_drives: dict[int, PhysicalDrive]
+    :type phy_drives: dict[str, PhysicalDrive]
     :type log_drives: list[LogicalDrive]
     """
+    name = 'raid'
+    raid_manager = ''
     executables = []
 
     adapters = []
@@ -39,19 +32,40 @@ class RaidCli:
     def __init__(self):
         self.executable = self.find_cli_path()
 
+    def collect_data(self):
+        self.collect_all_data()
+        return self
+
+    # noinspection PyTypeChecker
+    def to_dict(self):
+        raid = []
+
+        for adapter in self.adapters:
+            d_adapter = adapter.to_dict()
+            d_adapter['logical_drives'] = [d.to_dict() for d in adapter.logical_drives]
+            d_adapter['physical_drives'] = [d.to_dict() for d in adapter.physical_drives]
+
+            raid.append(d_adapter)
+
+        return {
+            'ver': 1,
+            'adapters': raid,
+            'manager': self.raid_manager,
+        }
+
     def find_cli_path(self):
         """ Search for the executable for this raid CLI. Subclass must provide list of possible command names in
          self.executables
 
         :return: Path to the first executable found
         :rtype: str
-        :raises: RaidCliException if an executable could not be found
+        :raises: RaidReportException if an executable could not be found
         """
         for exe in self.executables:
             path = find_executable(exe)
             if path:
                 return path
-        raise RaidCliException("Could not find executable on PATH")
+        raise RaidReportException("Could not find executable on PATH: %s" % ','.join(self.executables))
 
     def collect_all_data(self, connect=True):
         """ Collect all possible information about RAID
@@ -61,6 +75,8 @@ class RaidCli:
         self.parse_adapters()
         self.parse_physical_drives()
         self.parse_logical_drives()
+
+        self.post_process()
 
         if connect:
             self.connect_data()
@@ -94,7 +110,7 @@ class RaidCli:
 
         :return: Adapters present on this system
         :rtype: dict[str, dict[str, str]]
-        :raises: RaidCliException if there was a problem with cli tool
+        :raises: RaidReportException if there was a problem with cli tool
         """
         raise NotImplementedError()
 
@@ -103,7 +119,7 @@ class RaidCli:
 
         :return: Physical drives present on this system
         :rtype: dict[str, dict[str, str]]
-        :raises: RaidCliException if there was a problem with cli tool
+        :raises: RaidReportException if there was a problem with cli tool
         """
         raise NotImplementedError()
 
@@ -112,9 +128,60 @@ class RaidCli:
 
         :return: Logical drives present on this system
         :rtype: list[dict[str, str]]
-        :raises: RaidCliException if there was a problem with cli tool
+        :raises: RaidReportException if there was a problem with cli tool
         """
         raise NotImplementedError()
+
+    def post_process(self):
+        """ Any post processing code that before we start linking models
+        """
+
+    @staticmethod
+    def automatic_cli():
+        """ Automatically detect the RAID manager on this system
+
+        :return: Supported RAID report instance
+        :rtype: RaidReport
+        """
+        for f in os.listdir(os.path.dirname(__file__)):
+            if not (f.startswith('raid_') and f.endswith('.py')):
+                continue
+
+            module_name, _py = os.path.splitext(f)
+            try:
+                module = __import__(module_name)
+            except ImportError:
+                # Should not happen
+                continue
+
+            try:
+                report = module.report()
+                log.info("Found supported RAID manager: %s", module.report.__name__)
+                return report
+            except AttributeError:
+                # There is no report = ReportClass in the module
+                log.debug("Not a valid RAID manager: %s", module.report.__name__)
+            except RaidReportException:
+                # Current report is not supported on this system
+                log.debug("Unsupported RAID manager: %s", module.report.__name__)
+
+        raise RaidReportException("No supported RAID managers found.")
+
+    def stdout(self):
+        for adapter in self.adapters:
+            print(adapter)
+
+            for ldrive in adapter.logical_drives:
+                print('\t%s' % ldrive)
+
+                for pdrive in ldrive.physical_drives:
+                    print('\t\t%s' % pdrive)
+
+            if adapter.spare_physical_drives:
+                print('\tSpare drives:')
+
+                for pdrive in adapter.spare_physical_drives:
+                    print('\t\t%s' % pdrive)
 
 
 class Adapter:
@@ -123,25 +190,45 @@ class Adapter:
     :type logical_drives: list[LogicalDrive]
     :type physical_drives: list[PhysicalDrive]
     :type spare_physical_drives: list[PhysicalDrive]
+    :type data: dict[str, str]
     """
     logical_drives = None
     physical_drives = None
     spare_physical_drives = None
 
-    def __init__(self, adapter_id, name, serial, temperature):
+    data = {}
+
+    def __init__(self, adapter_id, name, serial, temperature, data=None):
         """
         :param str adapter_id: Numerical ID of this adapter
         :param str name: Adapter name, usually make/model
         :param str serial: Adapter's serial number
         :param str temperature: Temperature of ROC (raid-on-chip)
+        :param dict[str, str] data: raw values read from raid management
         """
-        self.adapter_id = int(adapter_id)
+        self.adapter_id = adapter_id
         self.name = name
         self.serial = serial
-        self.temperature = int(temperature)
+        self.temperature = int(temperature) if temperature else None
+
+        if data:
+            self.data = data
 
     def __str__(self):
-        return "Adapter {adapter_id}: {name} | {temperature}C".format(**vars(self))
+        string_fmt = ['Adapter {adapter_id}: {name}']
+        if self.temperature:
+            string_fmt.append('{temperature}C')
+
+        string_fmt = ' | '.join(string_fmt)
+        return string_fmt.format(**vars(self))
+
+    def to_dict(self):
+        return {
+            'id': self.adapter_id,
+            'name': self.name,
+            'serial': self.serial,
+            'temperature': self.temperature
+        }
 
 
 class LogicalDrive:
@@ -149,11 +236,14 @@ class LogicalDrive:
 
     :type adapter: Adapter
     :type physical_drives: list[PhysicalDrive]
+    :type data: dict[str, str]
     """
     adapter = None
     physical_drives = None
 
-    def __init__(self, drive_id, raid_level, size, state, adapter_id, pd_list):
+    data = {}
+
+    def __init__(self, drive_id, raid_level, size, state, adapter_id, pd_list, problem, data=None):
         """
         :param str drive_id: Numerical ID of this logical drive
         :param str raid_level: RAID level
@@ -162,16 +252,28 @@ class LogicalDrive:
         :param str adapter_id: Adapter ID
         :param list[str] pd_list: List of physical drive ids
         """
-        self.drive_id = int(drive_id)
+        self.drive_id = drive_id
         self.raid_level = raid_level
         self.size = size
         self.state = state
-        self.adapter_id = int(adapter_id)
-        self.phy_drive_ids = [int(d) for d in pd_list]
+        self.adapter_id = adapter_id
+        self.phy_drive_ids = [d for d in pd_list]
+        self.problem = problem
+
+        if data:
+            self.data = data
 
     def __str__(self):
-        state = format_msg(self.state, self.state != 'Optimal' and 'red')
+        state = format_msg(self.state, self.problem and 'red')
         return "Logical drive {drive_id}: {raid_level}, {size}, {st}".format(st=state, **vars(self))
+
+    def to_dict(self):
+        return {
+            'id': self.drive_id,
+            'level': self.raid_level,
+            'size': self.size,
+            'state': self.state
+        }
 
 
 class PhysicalDrive:
@@ -179,12 +281,19 @@ class PhysicalDrive:
 
     :type adapter: Adapter
     :type logical_drive: LogicalDrive
+    :type data: dict[str, str]
     """
+    STATUS_GOOD = 0
+    STATUS_FAILING = 1
+    STATUS_FAILED = 2
+
     adapter = None
     logical_drive = None
 
-    def __init__(self, drive_id, state, size, protocol, drive_type, fru, temperature, pred_fail, adapter_id, slot,
-                 hotspare):
+    data = {}
+
+    def __init__(self, drive_id, state, size, protocol, drive_type, fru, temperature, status, adapter_id, slot,
+                 hotspare, data=None):
         """
         :param str drive_id:
         :param str state:
@@ -193,28 +302,50 @@ class PhysicalDrive:
         :param str drive_type:
         :param str fru:
         :param str temperature:
-        :param bool pred_fail:
+        :param bool status:
         :param str adapter_id:
         :param str slot:
         :param bool hotspare:
         """
-        self.drive_id = int(drive_id)
+        self.drive_id = drive_id
         self.state = state
         self.size = size
         self.protocol = protocol
         self.drive_type = drive_type
         self.fru = fru
         self.temperature = temperature
-        self.predictive_fail = pred_fail
-        self.adapter_id = int(adapter_id)
-        self.slot = int(slot)
+        self.status = status
+        self.adapter_id = adapter_id
+        self.slot = slot
         self.hotspare = hotspare
 
-    def __str__(self):
-        predictive_fail = ''
-        if self.predictive_fail:
-            predictive_fail = format_msg('Predictive fail', 'orange')
+        if data:
+            self.data = data
 
-        return "Drive {drive_id:>2}: {state}; {size} {protocol} {drive_type}; {temperature}; {will_fail}".format(
-            will_fail=predictive_fail,
+    def __str__(self):
+        if self.status == PhysicalDrive.STATUS_GOOD:
+            status = format_msg(self.state, 'green')
+        elif self.status == PhysicalDrive.STATUS_FAILING:
+            status = format_msg(self.state, 'orange')
+        elif self.status == PhysicalDrive.STATUS_FAILED:
+            status = format_msg(self.state, 'red')
+        else:
+            status = format_msg(self.state, 'red')
+
+        return "Drive {drive_id:>2}: {size} {protocol} {drive_type}; {temperature}; {will_fail}".format(
+            will_fail=status,
             **vars(self))
+
+    def to_dict(self):
+        return {
+            'id': self.drive_id,
+            'state': self.state,
+            'size': self.size,
+            'protocol': self.protocol,
+            'type': self.drive_type,
+            'temperature': self.temperature,
+            'status': self.status,
+            'slot': self.slot,
+            'hotspare': self.hotspare,
+            'logical_drive': self.logical_drive.drive_id if self.logical_drive else None
+        }

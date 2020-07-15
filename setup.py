@@ -53,11 +53,8 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ccbr_raid_megacli=ccbr_server.megacli:main'
-            # 'deleteallmyjobs=cluster.deleteallmyjobs:main',
-            # 'nodes=cluster.nodes:main',
-            # 'submitjob=cluster.submitjob:main',
-            # 'jobstatus=cluster.jobstatus:main'
+            'ccbr_raid_megacli=ccbr_server.raid_megacli:main',
+            'ccbr_df=ccbr_server.disk_usage:main'
         ]
     },
 )

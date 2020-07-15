@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 
-from ccbr_server.raid import RaidCli, RaidCliException, Adapter, PhysicalDrive, LogicalDrive
+from ccbr_server.raid import RaidReport, RaidReportException, Adapter, PhysicalDrive, LogicalDrive
 
 PROP_RE = re.compile(r'(.*?)\s*:\s*(.+)')
 RAID_LEVEL_MAP = {
@@ -11,7 +11,8 @@ RAID_LEVEL_MAP = {
 }
 
 
-class MegaCli(RaidCli):
+class MegaCliReport(RaidReport):
+    raid_manager = 'megacli'
     executables = ['megacli', 'MegaCli', 'MegaCli64']
 
     def parse_adapters(self):
@@ -19,7 +20,7 @@ class MegaCli(RaidCli):
         out, _ = p.communicate()
 
         if p.returncode != 0:
-            raise RaidCliException("MegaCli could not get adapter info")
+            raise RaidReportException("MegaCli could not get adapter info")
 
         adapters = []
         adapter = {}
@@ -53,7 +54,7 @@ class MegaCli(RaidCli):
         out, _ = p.communicate()
 
         if p.returncode != 0:
-            raise RaidCliException("MegaCli could not get physical drives info")
+            raise RaidReportException("MegaCli could not get physical drives info")
 
         adapter = None
         drives = []
@@ -87,6 +88,12 @@ class MegaCli(RaidCli):
                     drive['hotspare'] = True
 
         for drive in drives:
+            status = PhysicalDrive.STATUS_GOOD
+            if drive['Predictive Failure Count'] != '0':
+                status = PhysicalDrive.STATUS_FAILING
+            if 'bad' in drive['Firmware state']:
+                status = PhysicalDrive.STATUS_FAILED
+
             pdrive = PhysicalDrive(
                 drive['Device Id'],
                 drive['Firmware state'],
@@ -95,7 +102,7 @@ class MegaCli(RaidCli):
                 ' '.join(drive['Inquiry Data'].split()),
                 drive.get('IBM FRU/CRU', ''),
                 drive['Drive Temperature'].split()[0],
-                drive['Predictive Failure Count'] != '0',
+                status,
                 drive['adapter_id'],
                 drive['Slot Number'],
                 drive.get('hotspare', False)
@@ -109,7 +116,7 @@ class MegaCli(RaidCli):
         out, _ = p.communicate()
 
         if p.returncode != 0:
-            raise RaidCliException("MegaCli could not get physical drives info")
+            raise RaidReportException("MegaCli could not get logical drives info")
 
         re_adp = re.compile(r'Adapter #(\d+)')
         re_vdr = re.compile(r'Virtual Drive: (\d+)')
@@ -150,10 +157,14 @@ class MegaCli(RaidCli):
                 drive['Size'],
                 drive['State'],
                 drive['adapter_id'],
-                drive['physical_drives']
+                drive['physical_drives'],
+                drive['State'] != 'Optimal'
             ))
 
         return self.log_drives
+
+
+report = MegaCliReport
 
 
 def main():
@@ -166,23 +177,9 @@ def main():
     parser = argparse.ArgumentParser(description='Analyze MegaCli output')
     _ = parser.parse_args()
 
-    megacli = MegaCli()
+    megacli = MegaCliReport()
     megacli.collect_all_data()
-
-    for adapter in megacli.adapters:
-        print(adapter)
-
-        for ldrive in adapter.logical_drives:
-            print('\t%s' % ldrive)
-
-            for pdrive in ldrive.physical_drives:
-                print('\t\t%s' % pdrive)
-
-        if adapter.spare_physical_drives:
-            print('\tSpare drives:')
-
-            for pdrive in adapter.spare_physical_drives:
-                print('\t\t%s' % pdrive)
+    megacli.stdout()
 
 
 if __name__ == '__main__':
