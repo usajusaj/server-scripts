@@ -1,3 +1,33 @@
+import os
+
+try:
+    import configparser as configparser
+except ImportError:
+    # noinspection PyPep8Naming
+    import ConfigParser as configparser
+
+
+def project_root():
+    return os.path.dirname(os.path.dirname(__file__))
+
+
+project_root = project_root()
+
+
+def get_config():
+    """ Get configuration by parsing default settings and any custom settings in /etc
+
+    :return: Configuration
+    :rtype: configparser.ConfigParser
+    """
+    default_config = os.path.join(project_root, 'etc/ccbr_scripts.ini')
+
+    config = configparser.ConfigParser()
+    config.read([default_config, '/etc/ccbr_scripts.ini'])
+
+    return config
+
+
 def format_msg(msg, color=None):
     """ Wrap msg in bash escape characters
 

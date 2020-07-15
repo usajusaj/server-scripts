@@ -26,8 +26,9 @@ setup(
     long_description_content_type='text/markdown',
     author='Matej Usaj',
     author_email='m.usaj@utoronto.ca',
-#     package_data={'': ['cluster/qsub_job.template']},
-#     include_package_data=True,
+    package_data={'': ['lib/hdsentinel/*']},
+    zip_safe=False,
+    include_package_data=True,
     url='https://github.com/BooneAndrewsLab/server-scripts',
     download_url='https://github.com/BooneAndrewsLab/server-scripts/archive/master.zip',
 
@@ -54,8 +55,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ccbr_raid_megacli=ccbr_server.raid_megacli:main',
-            'ccbr_df=ccbr_server.disk_usage:main'
+            'ccbr_report=ccbr_server.cli:main'
         ]
-    },
+    }
 )

@@ -3,17 +3,13 @@ import logging
 import os
 import socket
 
+from ccbr_server.common import get_config
+from ccbr_server.disk_hdsentinel import HDSentinelReport
 from ccbr_server.disk_usage import UsageReport
 from ccbr_server.raid import RaidReport, RaidReportException
 from ccbr_server.raid_megacli import MegaCliReport
 from ccbr_server.raid_omreport import OmreportReport
 from ccbr_server.stale_nfs import StaleNFSReport
-
-try:
-    import configparser as configparser
-except ImportError:
-    # noinspection PyPep8Naming
-    import ConfigParser as configparser
 
 log = logging.getLogger(__file__)
 
@@ -65,6 +61,9 @@ def all_reports(parser, args, config):
         elif check == 'disk_usage':
             log.info("Adding UsageReport to reports")
             reports.append(UsageReport())
+        elif check == 'hdsentinel':
+            log.info("Adding HDSentinelReport to reports")
+            reports.append(HDSentinelReport())
 
     post = {
         'reports': {}
@@ -93,11 +92,7 @@ def main():
         print("This script must be run by root!")
         # exit(1)
 
-    project_root = os.path.dirname(os.path.dirname(__file__))
-    default_config = os.path.join(project_root, 'etc/ccbr_scripts.ini')
-
-    config = configparser.ConfigParser()
-    config.read([default_config, '/etc/ccbr_scripts.ini'])
+    config = get_config()
 
     # noinspection PyCompatibility
     import argparse
