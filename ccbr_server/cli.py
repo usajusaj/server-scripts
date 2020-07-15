@@ -12,6 +12,7 @@ from ccbr_server.stale_nfs import StaleNFSReport
 try:
     import configparser as configparser
 except ImportError:
+    # noinspection PyPep8Naming
     import ConfigParser as configparser
 
 log = logging.getLogger(__file__)
