@@ -149,7 +149,7 @@ class RaidReport(Report):
 
             module_name, _py = os.path.splitext(f)
             try:
-                module = __import__(module_name)
+                module = __import__('ccbr_server.%s' % module_name)
                 log.debug("Imported %s", f)
             except ImportError:
                 # Should not happen
