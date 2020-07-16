@@ -150,6 +150,7 @@ class RaidReport(Report):
             module_name, _py = os.path.splitext(f)
             try:
                 module = __import__(module_name)
+                log.debug("Imported %s", f)
             except ImportError:
                 # Should not happen
                 log.debug("Import failed for %s", f)
