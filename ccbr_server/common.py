@@ -8,7 +8,7 @@ except ImportError:
 
 
 def project_root():
-    return os.path.dirname(os.path.dirname(__file__))
+    return os.path.dirname(__file__)
 
 
 project_root = project_root()
@@ -58,6 +58,10 @@ def shclr(msg, code):
     :return: Escaped message
     """
     return '\033[%sm%s\033[0m' % (code, msg)
+
+
+class ReportException(Exception):
+    pass
 
 
 class Report(object):

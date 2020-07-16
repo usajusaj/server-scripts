@@ -4,13 +4,12 @@ import os
 # noinspection PyUnresolvedReferences
 from distutils.spawn import find_executable
 
-from ccbr_server.common import Report, format_msg
-
+from ccbr_server.common import Report, format_msg, ReportException
 
 log = logging.getLogger(__file__)
 
 
-class RaidReportException(Exception):
+class RaidReportException(ReportException):
     pass
 
 
