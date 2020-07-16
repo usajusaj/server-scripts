@@ -143,6 +143,7 @@ class RaidReport(Report):
         :rtype: RaidReport
         """
         for f in os.listdir(os.path.dirname(__file__)):
+            log.info("Considering %s", f)
             if not (f.startswith('raid_') and f.endswith('.py')):
                 continue
 
@@ -151,6 +152,7 @@ class RaidReport(Report):
                 module = __import__(module_name)
             except ImportError:
                 # Should not happen
+                log.debug("Import failed for %s", f)
                 continue
 
             try:
