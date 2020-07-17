@@ -44,7 +44,7 @@ class MegaCliReport(RaidReport):
                 adapter['id'],
                 adapter['Product Name'],
                 adapter['Serial No'],
-                adapter['ROC temperature'].split()[0]
+                'ROC temperature' in adapter and adapter['ROC temperature'].split()[0]
             ))
 
         return self.adapters
