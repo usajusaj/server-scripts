@@ -60,7 +60,7 @@ class OmreportReport(RaidReport):
             line = line.rstrip()
 
             if line.startswith('ID'):  # Begin parsing new drive
-                drive = {'adapter_id': adapter.adapter_id}
+                drive = {'adapter_id': adapter}
                 drives.append(drive)
 
             m = PROP_RE.match(line)
