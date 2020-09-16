@@ -1,7 +1,13 @@
+import sys
 import logging
 import subprocess
 from functools import partial
-from multiprocessing import Pool
+
+# There is a bug with partial() and Pool.map() for py < 2.7, fixed by using mp.dummy.Pool
+if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+    from multiprocessing.dummy import Pool
+else:
+    from multiprocessing import Pool
 
 from ccbr_server.common import Report, shclr, SHBGRED, SHBGGREEN
 
