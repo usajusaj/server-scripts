@@ -162,7 +162,7 @@ class RaidReport(Report):
                 return report
             except AttributeError:
                 # There is no report = ReportClass in the module
-                log.debug("Not a valid RAID manager: %s", module.report.__name__)
+                log.debug("Not a valid RAID manager: %s", module.__name__)
             except RaidReportException:
                 # Current report is not supported on this system
                 log.debug("Unsupported RAID manager: %s", module.report.__name__)
