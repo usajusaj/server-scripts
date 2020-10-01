@@ -143,9 +143,10 @@ class RaidReport(Report):
         :rtype: RaidReport
         """
         for f in os.listdir(os.path.dirname(__file__)):
-            log.info("Considering %s", f)
             if not (f.startswith('raid_') and f.endswith('.py')):
                 continue
+
+            log.info("Considering %s", f)
 
             module_name, _py = os.path.splitext(f)
             try:
@@ -157,7 +158,7 @@ class RaidReport(Report):
                 continue
 
             try:
-                report = module.report()
+                report = module.simple_report()
                 log.info("Found supported RAID manager: %s", module.report.__name__)
                 return report
             except AttributeError:
