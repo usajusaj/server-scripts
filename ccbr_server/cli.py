@@ -5,6 +5,7 @@ import socket
 
 from ccbr_server.common import get_config
 from ccbr_server.disk_hdsentinel import HDSentinelReport
+from ccbr_server.disk_smartctl import SmartReport
 from ccbr_server.disk_usage import UsageReport
 from ccbr_server.raid import RaidReport, RaidReportException
 from ccbr_server.raid_md import MdReport
@@ -67,6 +68,9 @@ def all_reports(parser, args, config):
         elif check == 'hdsentinel':
             log.info("Adding HDSentinelReport to reports")
             reports.append(HDSentinelReport())
+        elif check == 'smart':
+            log.info("Adding SmartReport to reports")
+            reports.append(SmartReport())
 
     post = {
         'reports': {}
@@ -87,7 +91,7 @@ def all_reports(parser, args, config):
 
         req = Request(config.get('DEFAULT', 'post_url'))
         req.add_header('Content-Type', 'application/json')
-        _ = urlopen(req, json.dumps(post).encode())  # Ignore response for now
+        _ = urlopen(req, json.dumps(post, separators=(',', ':')).encode())  # Ignore response for now
 
 
 def main():
