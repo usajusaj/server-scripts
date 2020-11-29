@@ -27,7 +27,7 @@ class HDSentinelReport(Report):
 
         if config.has_option('hdsentinel', 'exec') and config.get('hdsentinel', 'exec'):
             return config.get('hdsentinel', 'exec')
-        return os.path.join(project_root, 'lib/hdsentinel/hdsentinel')
+        return os.path.join(project_root, 'lib/hdsentinel/hdsentinel-018c-x64')
 
     def collect_data(self):
         p = subprocess.Popen([self.executable, '-xml', '-dump'], stdout=subprocess.PIPE)

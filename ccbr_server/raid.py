@@ -158,7 +158,7 @@ class RaidReport(Report):
                 continue
 
             try:
-                report = module.report()
+                report = module.report()  # run constructor
                 log.info("Found supported RAID manager: %s", module.report.__name__)
                 return report
             except AttributeError:

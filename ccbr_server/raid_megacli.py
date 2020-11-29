@@ -25,7 +25,7 @@ class MegaCliReport(RaidReport):
         adapters = []
         adapter = {}
 
-        for line in out.splitlines():
+        for line in out.decode().splitlines():
             line = line.rstrip()
 
             if line.startswith('Adapter #'):  # Begin parsing new adapter
@@ -61,7 +61,7 @@ class MegaCliReport(RaidReport):
         drive = {}
         blank_count = 0
 
-        for line in out.splitlines():
+        for line in out.decode().splitlines():
             line = line.rstrip()
 
             if not line:
@@ -128,7 +128,7 @@ class MegaCliReport(RaidReport):
         drives = []
         drive = {}
 
-        for line in out.splitlines():
+        for line in out.decode().splitlines():
             line = line.rstrip()
 
             if line.startswith('Adapter #'):  # Begin parsing new adapter

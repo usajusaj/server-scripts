@@ -7,6 +7,7 @@ from ccbr_server.common import get_config
 from ccbr_server.disk_hdsentinel import HDSentinelReport
 from ccbr_server.disk_usage import UsageReport
 from ccbr_server.raid import RaidReport, RaidReportException
+from ccbr_server.raid_md import MdReport
 from ccbr_server.raid_megacli import MegaCliReport
 from ccbr_server.raid_omreport import OmreportReport
 from ccbr_server.stale_nfs import StaleNFSReport
@@ -44,6 +45,8 @@ def all_reports(parser, args, config):
                     report = MegaCliReport()
                 elif raid_type == 'omreport':
                     report = OmreportReport()
+                elif raid_type == 'md':
+                    report = MdReport()
 
             if report is None:
                 try:

@@ -21,7 +21,7 @@ class OmreportReport(RaidReport):
         adapters = []
         adapter = {}
 
-        for line in out.splitlines():
+        for line in out.decode().splitlines():
             line = line.rstrip()
 
             if line.startswith('Controller'):  # Begin parsing new adapter
@@ -56,7 +56,7 @@ class OmreportReport(RaidReport):
         drives = []
         drive = {}
 
-        for line in out.splitlines():
+        for line in out.decode().splitlines():
             line = line.rstrip()
 
             if line.startswith('ID'):  # Begin parsing new drive
@@ -125,7 +125,7 @@ class OmreportReport(RaidReport):
 
             pdrives = []
 
-            for line in out.splitlines():
+            for line in out.decode().splitlines():
                 line = line.rstrip()
 
                 if line.startswith('ID'):
