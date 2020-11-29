@@ -27,7 +27,7 @@ setup(
     author='Matej Usaj',
     author_email='m.usaj@utoronto.ca',
     zip_safe=False,
-    package_data={'': ['etc/ccbr_scripts.ini', 'lib/hdsentinel/*']},
+    package_data={'': ['etc/ccbr_scripts.ini', 'lib/hdsentinel/*', 'lib/smart/*']},
     include_package_data=True,
     url='https://github.com/BooneAndrewsLab/server-scripts',
     download_url='https://github.com/BooneAndrewsLab/server-scripts/archive/master.zip',
