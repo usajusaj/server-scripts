@@ -84,7 +84,7 @@ def all_reports(parser, args, config):
 
         req = Request(config.get('DEFAULT', 'post_url'))
         req.add_header('Content-Type', 'application/json')
-        _ = urlopen(req, json.dumps(post))  # Ignore response for now
+        _ = urlopen(req, json.dumps(post).encode())  # Ignore response for now
 
 
 def main():
