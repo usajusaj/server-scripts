@@ -82,7 +82,7 @@ class SmartReport(Report):
                 for bit, error in enumerate(RETURN_CODES):
                     isbit = (p.returncode >> bit) & 1
                     if isbit:
-                        errors.append(error)
+                        errors.append(bit)
 
             if out:
                 device_out = json.loads(out)
