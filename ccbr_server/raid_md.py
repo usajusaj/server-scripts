@@ -1,3 +1,4 @@
+import os
 import subprocess
 import re
 from collections import defaultdict
@@ -42,9 +43,9 @@ class MdReport(RaidReport):
         return self.adapters
 
     # noinspection PyMethodMayBeStatic
-    def _examine_physical_drive(self, drive_name):
+    def _examine_physical_drive(self, device_path):
         p = subprocess.Popen(
-            ['mdadm', '--examine', '/dev/%s1' % drive_name],  # We partition drive and use first partition for md
+            ['mdadm', '--examine', device_path],  # We partition drive and use first partition for md
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         out, _ = p.communicate()
@@ -91,7 +92,11 @@ class MdReport(RaidReport):
             if state != 'running':
                 status = PhysicalDrive.STATUS_FAILED
 
-            drive = self._examine_physical_drive(drive_id)
+            if os.path.exists(device_path + '1'):
+                # We're using partitions in mdadm
+                device_path += '1'
+
+            drive = self._examine_physical_drive(device_path)
 
             pdrive = PhysicalDrive(
                 drive_id,
