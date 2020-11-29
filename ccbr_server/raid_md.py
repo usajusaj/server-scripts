@@ -132,7 +132,9 @@ class MdReport(RaidReport):
                     # noinspection PyTypeChecker
                     drive.update([m.groups()])  # our regex has exactly 2 groups, ignore warning
 
-            size = int(drive['Array Size'].split('(')[0].strip())
+            size = 0
+            if 'Array Size' in drive:  # Failed arrays don't report size
+                size = int(drive['Array Size'].split('(')[0].strip())
 
             self.log_drives.append(LogicalDrive(
                 arr,
@@ -141,7 +143,7 @@ class MdReport(RaidReport):
                 drive['State'],
                 'Linux RAID',
                 pdrives_by_array_uuid.get(drive['UUID'], []),
-                drive['State'] == 'inactive'
+                'FAILED' in drive['State']
             ))
 
         return self.log_drives
