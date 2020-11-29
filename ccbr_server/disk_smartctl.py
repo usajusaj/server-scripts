@@ -68,7 +68,7 @@ class SmartReport(Report):
         devices = json.loads(out)
 
         for device in devices['devices']:
-            cmd = [self.executable, '--json=c', '--all']
+            cmd = [self.executable, '--json=c', '--all', '-B', '+' + os.path.join(project_root, 'lib/smart/drivedb.h')]
             if 'megaraid' in device['type']:
                 cmd += ['--device', device['type']]
             cmd += [device['name']]
