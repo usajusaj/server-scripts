@@ -46,7 +46,7 @@ class MdReport(RaidReport):
         p = subprocess.Popen(
             ['mdadm', '--examine', '/dev/%s1' % drive_name],  # We partition drive and use first partition for md
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL)
+            stderr=subprocess.STDOUT)
         out, _ = p.communicate()
 
         if p.returncode != 0:
