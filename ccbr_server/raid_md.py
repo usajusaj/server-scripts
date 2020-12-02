@@ -1,9 +1,12 @@
+import logging
 import os
-import subprocess
 import re
+import subprocess
 from collections import defaultdict
 
 from ccbr_server.raid import RaidReport, RaidReportException, Adapter, PhysicalDrive, LogicalDrive
+
+log = logging.getLogger(__file__)
 
 PROP_RE = re.compile(r'(.*?)\s*:\s*(.+)')
 
@@ -44,8 +47,10 @@ class MdReport(RaidReport):
 
     # noinspection PyMethodMayBeStatic
     def _examine_physical_drive(self, device_path):
+        cmd = ['mdadm', '--examine', device_path]
+        log.debug("Examining physical drive '%s'" % (' '.join(cmd),))
         p = subprocess.Popen(
-            ['mdadm', '--examine', device_path],  # We partition drive and use first partition for md
+            cmd,  # We partition drive and use first partition for md
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         out, _ = p.communicate()
@@ -71,9 +76,12 @@ class MdReport(RaidReport):
                     partition = line.split()[0]
                     os_drives.append(re.sub(r'[0-9]', '', partition))
 
-        p = subprocess.Popen(
-            ['lsblk', '--ascii', '--nodeps', '--noheadings', '--raw', '--output', 'NAME,MAJ:MIN,MODEL,SIZE,STATE'],
-            stdout=subprocess.PIPE)
+        log.info("Ignoring drives with OS partitions on them: %s" % (', '.join(os_drives),))
+
+        cmd = ['lsblk', '--ascii', '--nodeps', '--noheadings', '--raw', '--output', 'NAME,MAJ:MIN,MODEL,SIZE,STATE']
+        log.debug("Listing physical drives: '%s'" % (' '.join(cmd), ))
+
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         out, _ = p.communicate()
 
         if p.returncode != 0:
@@ -124,7 +132,10 @@ class MdReport(RaidReport):
                 pdrives_by_array_uuid[drive.data['Array UUID']].append(drive_id)
 
         for arr in self.arrays:
-            p = subprocess.Popen([self.executable, '--detail', arr], stdout=subprocess.PIPE)
+            cmd = [self.executable, '--detail', arr]
+            log.debug("Logical drive %s details: '%s'" % (arr, ' '.join(cmd), ))
+
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             out, _ = p.communicate()
 
             if p.returncode != 0:
@@ -144,7 +155,7 @@ class MdReport(RaidReport):
             self.log_drives.append(LogicalDrive(
                 arr,
                 drive['Raid Level'].upper(),
-                '%.1fTB' % (size / 1024**3, ),
+                '%.1fTB' % (size / 1024 ** 3,),
                 drive['State'],
                 'Linux RAID',
                 pdrives_by_array_uuid.get(drive['UUID'], []),
@@ -158,6 +169,9 @@ report = MdReport
 
 
 def main():
+    log.setLevel(logging.DEBUG)
+    logging.basicConfig(level=log.level)
+
     # noinspection PyCompatibility
     import argparse
     parser = argparse.ArgumentParser(description='Analyze md raid')
