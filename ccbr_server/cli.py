@@ -47,7 +47,8 @@ def all_reports(parser, args, config):
                 elif raid_type == 'omreport':
                     report = OmreportReport()
                 elif raid_type == 'md':
-                    report = MdReport()
+                    report = MdReport(timeout=config.get('raid_md', 'timeout'),
+                                      concurrency=config.get('raid_md', 'concurrency'))
 
             if report is None:
                 try:

@@ -3,7 +3,10 @@ import os
 import re
 import subprocess
 from collections import defaultdict
+from functools import partial
+from tempfile import TemporaryFile
 
+from ccbr_server.common import get_pool
 from ccbr_server.raid import RaidReport, RaidReportException, Adapter, PhysicalDrive, LogicalDrive
 
 log = logging.getLogger(__file__)
@@ -11,13 +14,48 @@ log = logging.getLogger(__file__)
 PROP_RE = re.compile(r'(.*?)\s*:\s*(.+)')
 
 
+def examine_physical_drive(device_path, mdadm, timeout):
+    cmd = ['timeout', str(timeout), mdadm, '--examine', device_path]
+    log.debug("Examining physical drive '%s'" % (' '.join(cmd),))
+
+    out = None
+
+    with TemporaryFile() as tmp:
+        ret = subprocess.call(cmd, stdout=tmp, stderr=tmp)
+
+        if ret != 124:  # Not Timeout
+            tmp.seek(0)
+            out = tmp.read()
+        else:
+            log.warning("mdadm timeout for %s", device_path)
+
+    if ret != 0:
+        return device_path, {}
+
+    drive = {}
+    for line in out.decode().splitlines():
+        m = PROP_RE.match(line.strip())
+        if m:
+            # noinspection PyTypeChecker
+            drive.update([m.groups()])  # our regex has exactly 2 groups, ignore warning
+
+    return device_path, drive
+
+
 class MdReport(RaidReport):
     raid_manager = 'md'
     executables = ['mdadm']
     arrays = []
 
-    def __init__(self):
+    def __init__(self, timeout=10, concurrency=4):
+        """
+        :param int|str timeout: mdadm timeout in seconds
+        :param int|str concurrency: Thread pool size for concurrent checking
+        """
         super(MdReport, self).__init__()
+
+        self.timeout = int(timeout)
+        self.concurrency = int(concurrency)
 
         self._check_array_list()
 
@@ -45,28 +83,6 @@ class MdReport(RaidReport):
 
         return self.adapters
 
-    # noinspection PyMethodMayBeStatic
-    def _examine_physical_drive(self, device_path):
-        cmd = ['mdadm', '--examine', device_path]
-        log.debug("Examining physical drive '%s'" % (' '.join(cmd),))
-        p = subprocess.Popen(
-            cmd,  # We partition drive and use first partition for md
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
-        out, _ = p.communicate()
-
-        if p.returncode != 0:
-            return {}
-
-        drive = {}
-        for line in out.decode().splitlines():
-            m = PROP_RE.match(line.strip())
-            if m:
-                # noinspection PyTypeChecker
-                drive.update([m.groups()])  # our regex has exactly 2 groups, ignore warning
-
-        return drive
-
     def parse_physical_drives(self):
         # Find OS drive first, so we can exclude it from the list
         os_drives = []
@@ -87,7 +103,10 @@ class MdReport(RaidReport):
         if p.returncode != 0:
             raise RaidReportException("Error running lsblk")
 
+        devices = {}
+
         for line in out.decode('ascii').splitlines():
+            # noinspection PyTypeChecker
             line = re.sub(r'\\x[0-9]{2}', '_', line)  # Replace all \\x## with underscore
             drive_id, device_number, model, size, state = line.split()
 
@@ -104,7 +123,7 @@ class MdReport(RaidReport):
                 # We're using partitions in mdadm
                 device_path += '1'
 
-            drive = self._examine_physical_drive(device_path)
+            devices[device_path] = drive_id
 
             pdrive = PhysicalDrive(
                 drive_id,
@@ -117,11 +136,24 @@ class MdReport(RaidReport):
                 status,
                 'Linux RAID',
                 device_number,
-                drive.get('Device Role') == 'spare',
-                drive
+                False  # hotspare
             )
 
             self.phy_drives[drive_id] = pdrive
+
+        log.debug("Creating mdadm check thread pool of size %s", self.concurrency)
+        pool = get_pool()(processes=self.concurrency)
+        res = pool.map(partial(examine_physical_drive, mdadm=self.executable, timeout=self.timeout), devices.keys())
+        for device_path, device_out in res:
+            pdrive = self.phy_drives[devices[device_path]]  # Map path back to PhysicalDrive
+
+            if device_out:
+                pdrive.hotspare = device_out.get('Device Role') == 'spare'
+                pdrive.data = device_out
+            else:  # mdadm timeout occurred
+                pdrive.status = PhysicalDrive.STATUS_FAILING
+
+        pool.close()
 
         return self.phy_drives
 

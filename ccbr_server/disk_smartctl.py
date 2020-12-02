@@ -2,17 +2,10 @@ import json
 import logging
 import os
 import subprocess
-import sys
 from functools import partial
 from tempfile import TemporaryFile
 
-# There is a bug with partial() and Pool.map() for py < 2.7, fixed by using mp.dummy.Pool
-if sys.version_info[0] == 2 and sys.version_info[1] < 7:
-    from multiprocessing.dummy import Pool
-else:
-    from multiprocessing import Pool
-
-from ccbr_server.common import Report, get_config, project_root, ReportException
+from ccbr_server.common import Report, get_config, project_root, ReportException, get_pool
 
 log = logging.getLogger(__file__)
 
@@ -129,7 +122,7 @@ class SmartReport(Report):
         log.info("Found %d drives", len(devices['devices']))
 
         log.debug("Creating smartctl check thread pool of size %s", self.concurrency)
-        pool = Pool(processes=self.concurrency)
+        pool = get_pool()(processes=self.concurrency)
         res = pool.map(partial(check_smart, smartctl=self.executable, timeout=self.timeout), devices['devices'])
         for device_in, device_out in res:
             if device_out is None:

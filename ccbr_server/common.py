@@ -1,4 +1,5 @@
 import os
+import sys
 
 try:
     import configparser as configparser
@@ -95,3 +96,19 @@ class Report(object):
         :rtype: dict[str, Any]
         """
         return Report().collect_data().to_dict()
+
+
+def get_pool():
+    """
+    Return platform compatible multiprocessing.Pool
+
+    :return: Pool class
+    """
+    # There is a bug with partial() and Pool.map() for py < 2.7, fixed by using mp.dummy.Pool
+    if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+        from multiprocessing.dummy import Pool
+    else:
+        from multiprocessing import Pool
+
+    return Pool
+
