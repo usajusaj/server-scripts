@@ -70,7 +70,8 @@ def all_reports(parser, args, config):
             reports.append(HDSentinelReport())
         elif check == 'smart':
             log.info("Adding SmartReport to reports")
-            reports.append(SmartReport())
+            reports.append(SmartReport(timeout=config.get('smart', 'timeout'),
+                                       concurrency=config.get('smart', 'concurrency')))
 
     post = {
         'reports': {}
