@@ -50,8 +50,7 @@ class OmreportReport(RaidReport):
                              stdout=subprocess.PIPE)
         out, _ = p.communicate()
 
-        if p.returncode != 0:
-            raise RaidReportException("omreport could not get %s info for adapter %s" % (drive_type, adapter))
+        # Exit code is 255 even if a controller is there but no disk is connected
 
         drives = []
         drive = {}
