@@ -1,22 +1,45 @@
 #!/bin/bash
 
 PIP_26="https://bootstrap.pypa.io/2.6/get-pip.py"
+PIP_27="https://bootstrap.pypa.io/2.7/get-pip.py"
 PIP="https://bootstrap.pypa.io/get-pip.py"
+PYTHON=
+
+if command -v python &> /dev/null; then
+  echo "python executable found"
+  PYTHON=python
+elif command -v python3 &> /dev/null; then
+  echo "python3 executable found"
+  PYTHON=python3
+elif command -v python2 &> /dev/null; then
+  echo "python2 executable found"
+  PYTHON=python2
+else
+  echo "No python executables found"
+  exit
+fi
 
 # Check if pip exists on this server
 if ! command -v pip &>/dev/null; then
   # Bootstrap pip it if not present
-  PY_VER=$(python -c "import sys; print('2.6' if sys.version_info[0] == 2 and sys.version_info[1] < 7 else '2.7')")
-  PIP_URL="$PIP"
+  PY_VER=$(${PYTHON} -c "import sys; print(sys.version_info[0] + '.' + sys.version_info[1])")
 
-  if test PY_VER = "2.6"; then
-    PIP_URL="$PIP_26"
-  fi
+  case ${PY_VER} in
+  "2.6")
+    PIP_URL="${PIP_26}"
+    ;;
+  "2.7")
+    PIP_URL="${PIP_27}"
+    ;;
+  *)
+    PIP_URL="${PIP}"
+    ;;
+  esac
 
   echo "Pip not found, installing from $PIP_URL"
   curl -O "$PIP_URL"
 
-  if ! python get-pip.py &>/dev/null; then
+  if ! ${PYTHON} get-pip.py &>/dev/null; then
     echo "Error installing pip"
     rm get-pip.py
     exit 1
@@ -31,7 +54,7 @@ if ! pip install --upgrade https://github.com/usajusaj/server-scripts/archive/ma
   exit 1
 fi
 
-INSTALL_DIR=$(python -c "import ccbr_server, os; print(os.path.dirname(ccbr_server.__file__))")
+INSTALL_DIR=$(${PYTHON} -c "import ccbr_server, os; print(os.path.dirname(ccbr_server.__file__))")
 DEFAULT_CONF="$INSTALL_DIR/etc/ccbr_scripts.ini"
 
 if test -f /etc/ccbr_scripts.ini; then
