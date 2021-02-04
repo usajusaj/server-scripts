@@ -148,7 +148,7 @@ class MegaCliReport(RaidReport):
                         # noinspection PyTypeChecker
                         drive.update([m.groups()])  # our regex has exactly 2 groups, ignore warning
                 elif line.startswith('Device Id:'):  # get physical drive id
-                    drive['physical_drives'].append(PROP_RE.match(line).group(2))
+                    drive['physical_drives'].append('%s:%s' % (adapter_id, PROP_RE.match(line).group(2)))
 
         for drive in drives:
             self.log_drives.append(LogicalDrive(
