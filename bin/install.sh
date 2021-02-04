@@ -22,7 +22,7 @@ fi
 # Check if pip exists on this server
 if ! command -v pip &>/dev/null; then
   # Bootstrap pip it if not present
-  PY_VER=$(${PYTHON} -c "import sys; print(sys.version_info[0] + '.' + sys.version_info[1])")
+  PY_VER=$(${PYTHON} -c "import sys; print(str(sys.version_info[0]) + '.' + str(sys.version_info[1]))")
 
   case ${PY_VER} in
   "2.6")
