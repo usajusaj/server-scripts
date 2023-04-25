@@ -27,7 +27,7 @@ class StorCliReport(RaidReport):
         for controller in cliout.get('Controllers', []):
             ctrl_data = controller.get('Response Data', {})
             self.adapters.append(Adapter(
-                ctrl_data.get('Basics', {}).get('Controller'),
+                str(ctrl_data.get('Basics', {}).get('Controller')),
                 ctrl_data.get('Basics', {}).get('Model'),
                 ctrl_data.get('Basics', {}).get('Serial Number'),
                 ctrl_data.get('HwCfg', {}).get('ROC temperature(Degree Celsius)'),
@@ -93,7 +93,7 @@ class StorCliReport(RaidReport):
                     for dk, dv in v.items():
                         drives[driveid][dk.replace(driveid, '').strip()] = dv
                 else:
-                    v[0]['Controller'] = controller['Command Status']['Controller']
+                    v[0]['Controller'] = str(controller['Command Status']['Controller'])
                     drives[k]['Basic'] = v[0]
 
         for drive_id, drive in drives.items():
@@ -147,7 +147,7 @@ class StorCliReport(RaidReport):
                 else:
                     ctrl, vd = VD_RE.match(k).groups()
                     v = v[0]
-                    v['Controller'] = int(ctrl)
+                    v['Controller'] = ctrl
                     vds[vd]['Basic'] = v
 
         for vdid, vd in vds.items():
