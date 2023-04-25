@@ -108,7 +108,7 @@ class StorCliReport(RaidReport):
                 state = PhysicalDrive.STATUS_FAILING
 
             pdrive = PhysicalDrive(
-                drive['Basic']['DID'],
+                str(drive['Basic']['DID']),
                 drive['Basic']['State'],
                 drive['Basic']['Size'],
                 drive['Basic']['Intf'],
