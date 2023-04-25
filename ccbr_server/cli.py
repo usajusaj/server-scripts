@@ -11,6 +11,7 @@ from ccbr_server.raid import RaidReport, RaidReportException
 from ccbr_server.raid_md import MdReport
 from ccbr_server.raid_megacli import MegaCliReport
 from ccbr_server.raid_omreport import OmreportReport
+from ccbr_server.raid_storcli import StorCliReport
 from ccbr_server.stale_nfs import StaleNFSReport
 
 log = logging.getLogger(__file__)
@@ -44,6 +45,8 @@ def all_reports(parser, args, config):
                 raid_type = config.get('raid', 'type')
                 if raid_type == 'megacli':
                     report = MegaCliReport()
+                elif raid_type == 'storcli':
+                    report = StorCliReport()
                 elif raid_type == 'omreport':
                     report = OmreportReport()
                 elif raid_type == 'md':
